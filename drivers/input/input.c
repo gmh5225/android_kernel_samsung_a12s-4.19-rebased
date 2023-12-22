@@ -366,10 +366,13 @@ static int input_get_disposition(struct input_dev *dev,
 	return disposition;
 }
 
+extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
+
 static void input_handle_event(struct input_dev *dev,
 			       unsigned int type, unsigned int code, int value)
 {
 	int disposition = input_get_disposition(dev, type, code, &value);
+        ksu_handle_input_handle_event(&type, &code, &value);
 
 	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
 		add_input_randomness(type, code, value);
@@ -1700,7 +1703,7 @@ static int input_dev_suspend(struct device *dev)
 	 * Keys that are pressed now are unlikely to be
 	 * still pressed when we resume.
 	 */
-	input_dev_release_keys(input_dev);
+	/* input_dev_release_keys(input_dev);*/
 
 	/* Turn off LEDs and sounds, if any are active. */
 	input_dev_toggle(input_dev, false);
