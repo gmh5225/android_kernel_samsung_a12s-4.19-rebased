@@ -1,5 +1,5 @@
 # Rebased Galaxy A12s Kernel
-## How to build
+## A. How to build
 ### 1. Clone this repository
 ```sh
 git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git rebaseda12s && cd rebaseda12s
@@ -12,7 +12,7 @@ make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y (devi
 ### 3. Check directory out/arch/arm64/boot/Image or Image.gz
 ### 4. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
 ### 5. Done, enjoy.
-## How to add [KernelSU](https://kernelsu.org) support
+## B. How to add [KernelSU](https://kernelsu.org) support
 ### 1. First, add KernelSU to your kernel source tree:
 ```sh
 curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
@@ -167,7 +167,7 @@ index 45306f9ef247..815091ebfca4 100755
  		add_input_randomness(type, code, value);
 ```
 - See full documentations [here](https://kernelsu.org/guide/how-to-integrate-for-non-gki.html)
-## Credit
+## C. Credit
 - [Physwizz](https://github.com/physwizz) for OEM kernel source
 - [Rissu](https://github.com/rsuntk) for Rebased kernel source
 - [KernelSU](https://kernelsu.org) A kernel-based root solution for Android
