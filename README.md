@@ -13,9 +13,6 @@ CLANG_TRIPLE=/path/to/aarch64-linux-gnu/bin/aarch64-linux-gnu-
   - [CROSS_COMPILE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L323)
   - [CC](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L374)
   - [CLANG_TRIPLE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L494)
-- **Note:**
-  - Some kernel may require different Clang version, and some kernel may only require aarch64-linux-gnu toolchains.
-
 #### 3. Edit arch/arm64/config/exynos850-a12snsxx_defconfig
 ```
 CONFIG_LOCALVERSION="-YourKernelSringsName"
@@ -31,8 +28,6 @@ cd $(pwd)/out/arch/arm64/boot && ls
 Image.gz - Kernel is compressed with gzip algorithm
 Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
 ```
-- **Note:**
-  - Some device use different algorithm, can be **Image.lz4, zImage, bzImage**
 #### 6. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
 #### 7. Done, enjoy.
 ## B. How to add [KernelSU](https://kernelsu.org) support
@@ -41,13 +36,13 @@ Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
 curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
 ```
 #### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/(devicename)_defconfig```, and the edit these lines
-- **From this:**
+**From this:**
 ```
 CONFIG_KPROBES=y
 CONFIG_HAVE_KPROBES=y
 CONFIG_KPROBE_EVENTS=y
 ```
-- **To this:**
+**To this:**
 ```
 # CONFIG_KPROBES is not set
 # CONFIG_HAVE_KPROBES is not set
