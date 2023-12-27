@@ -3,6 +3,11 @@
 ```sh
 git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git rebaseda12s && cd rebaseda12s
 ```
+#### 2. Get required Toolchains:
+- **For Galaxy A12s you need:**
+  - [clang-r353983c](https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/emu-29.0-release/clang-r353983c.tar.gz)
+  - [aarch64-linux-android](https://github.com/growtopiajaw/aarch64-linux-android-4.9)
+  - [aarch64-linux-gnu](https://github.com/radcolor/aarch64-linux-gnu)
 #### 2. Edit Makefile variable
 ```
 CROSS_COMPILE=/path/to/aarch64-linux-android/bin/aarch64-linux-android-
