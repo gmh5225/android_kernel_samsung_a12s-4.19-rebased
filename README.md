@@ -1,4 +1,4 @@
-# How to build
+## A. Building
 #### 1. Clone this repository
 ```sh
 git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git rebaseda12s && cd rebaseda12s
