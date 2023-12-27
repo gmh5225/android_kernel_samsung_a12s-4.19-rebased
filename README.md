@@ -1,42 +1,65 @@
-
-# Rebased Galaxy A12s Kernel
-## A. How to build
-### 1. Clone this repository
+# How to build
+#### 1. Clone this repository
 ```sh
 git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git rebaseda12s && cd rebaseda12s
 ```
-### 2. Edit arch/arm64/config/(devicename)_defconfig 
-### 3. Get this [build script](https://github.com/rsuntk/kernel-build-script) or
+#### 2. Edit Makefile variable
+```
+CROSS_COMPILE=/path/to/aarch64-linux-android/bin/aarch64-linux-android-
+CC=/path/to/clang/bin/clang
+CLANG_TRIPLE=/path/to/aarch64-linux-gnu/bin/aarch64-linux-gnu-
+```
+- **Reference:**
+  - [CROSS_COMPILE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L323)
+  - [CC](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L374)
+  - [CLANG_TRIPLE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L494)
+- **Note:**
+  - Some kernel may require different Clang version, and some kernel may only require aarch64-linux-gnu toolchains.
+
+#### 3. Edit arch/arm64/config/(devicename)_defconfig
+```
+CONFIG_LOCALVERSION="-YourKernelSringsName"
+# CONFIG_LOCALVERSION_AUTO is not set
+```
+#### 4. Get this [build script](https://github.com/rsuntk/kernel-build-script) or type
 ```sh
 make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y (devicename)_defconfig && make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ```
-### 3. Check directory out/arch/arm64/boot/Image or Image.gz
-### 4. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
-### 5. Done, enjoy.
+#### 5. Check directory out/arch/arm64/boot
+```sh
+cd $(pwd)/out/arch/arm64/boot && ls
+Image.gz - Kernel is compressed with gzip algorithm
+Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
+```
+- **Note:**
+  - Some device use different algorithm, can be **Image.lz4, zImage, bzImage**
+#### 6. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
+#### 7. Done, enjoy.
 ## B. How to add [KernelSU](https://kernelsu.org) support
-### 1. First, add KernelSU to your kernel source tree:
+#### 1. First, add KernelSU to your kernel source tree:
 ```sh
 curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
 ```
-### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/(devicename)_defconfig```, and the edit these lines
-From this:
+#### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/(devicename)_defconfig```, and the edit these lines
+- **From this:**
 ```
 CONFIG_KPROBES=y
 CONFIG_HAVE_KPROBES=y
 CONFIG_KPROBE_EVENTS=y
 ```
-To this:
+- **To this:**
 ```
 # CONFIG_KPROBES is not set
 # CONFIG_HAVE_KPROBES is not set
 # CONFIG_KPROBE_EVENTS is not set
 ```
-### 3. Then add KernelSU config line to ```arch/arm64/configs/(devicename)_defconfig```
+#### 3. Then add KernelSU config line to ```arch/arm64/configs/(devicename)_defconfig```
 ```
 CONFIG_KSU=y
+# CONFIG_KSU_DEBUG is not set # if you a dev, then turn on this option for KernelSU debugging.
 ```
-### 4. Edit these file:
-- fs/exec.c
+#### 4. Edit these file:
+- **fs/exec.c**
 ```diff
 diff --git a/fs/exec.c b/fs/exec.c
 index ac59664eaecf..bdd585e1d2cc 100644
@@ -63,7 +86,7 @@ index ac59664eaecf..bdd585e1d2cc 100644
  	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
  }
 ```
-- fs/open.c
+- **fs/open.c**
 ```diff
 diff --git a/fs/open.c b/fs/open.c
 index 05036d819197..965b84d486b8 100644
@@ -95,7 +118,7 @@ index 05036d819197..965b84d486b8 100644
  	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
  		return -EINVAL;
 ```
-- fs/read_write.c
+- **fs/read_write.c**
 ```diff
 diff --git a/fs/read_write.c b/fs/read_write.c
 index 650fc7e0f3a6..55be193913b6 100644
@@ -119,7 +142,7 @@ index 650fc7e0f3a6..55be193913b6 100644
  		return -EBADF;
  	if (!(file->f_mode & FMODE_CAN_READ))
 ```
-- fs/stat.c
+- **fs/stat.c**
 ```diff
 diff --git a/fs/stat.c b/fs/stat.c
 index 376543199b5a..82adcef03ecc 100644
@@ -143,7 +166,7 @@ index 376543199b5a..82adcef03ecc 100644
  		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
  		return -EINVAL;
 ```
-- drivers/input/input.c
+- **drivers/input/input.c**
 ```diff
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 index 45306f9ef247..815091ebfca4 100755
@@ -167,8 +190,8 @@ index 45306f9ef247..815091ebfca4 100755
  	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
  		add_input_randomness(type, code, value);
 ```
-- See full documentations [here](https://kernelsu.org/guide/how-to-integrate-for-non-gki.html)
+- **See full KernelSU non-GKI integration documentations** [here](https://kernelsu.org/guide/how-to-integrate-for-non-gki.html)
 ## C. Credit
-- [Physwizz](https://github.com/physwizz) for OEM kernel source
-- [Rissu](https://github.com/rsuntk) for Rebased kernel source
-- [KernelSU](https://kernelsu.org) A kernel-based root solution for Android
+- [Physwizz](https://github.com/physwizz) - OEM and Permissive kernel source
+- [Rissu](https://github.com/rsuntk) - Rebased kernel source
+- [KernelSU](https://kernelsu.org) - A kernel-based root solution for Android
