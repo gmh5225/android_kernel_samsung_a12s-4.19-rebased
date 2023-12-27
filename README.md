@@ -16,14 +16,14 @@ CLANG_TRIPLE=/path/to/aarch64-linux-gnu/bin/aarch64-linux-gnu-
 - **Note:**
   - Some kernel may require different Clang version, and some kernel may only require aarch64-linux-gnu toolchains.
 
-#### 3. Edit arch/arm64/config/(devicename)_defconfig
+#### 3. Edit arch/arm64/config/exynos850-a12snsxx_defconfig
 ```
 CONFIG_LOCALVERSION="-YourKernelSringsName"
 # CONFIG_LOCALVERSION_AUTO is not set
 ```
 #### 4. Get this [build script](https://github.com/rsuntk/kernel-build-script) or type
 ```sh
-make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y (devicename)_defconfig && make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y
+make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y exynos850-a12snsxx_defconfig && make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ```
 #### 5. Check directory out/arch/arm64/boot
 ```sh
