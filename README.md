@@ -18,7 +18,7 @@ CLANG_TRIPLE=/path/to/aarch64-linux-gnu/bin/aarch64-linux-gnu-
   - [CROSS_COMPILE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L323)
   - [CC](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L374)
   - [CLANG_TRIPLE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L494)
-#### 3. Edit arch/arm64/config/exynos850-a12snsxx_defconfig
+#### 3. Edit `arch/arm64/config/exynos850-a12snsxx_defconfig`
 ```
 CONFIG_LOCALVERSION="-YourKernelSringsName"
 # CONFIG_LOCALVERSION_AUTO is not set
@@ -40,7 +40,7 @@ Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
 ```sh
 curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
 ```
-#### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/(devicename)_defconfig```, and the edit these lines
+#### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/exynos850-a12snsxx_defconfig```, and the edit these lines
 **From this:**
 ```
 CONFIG_KPROBES=y
@@ -53,7 +53,7 @@ CONFIG_KPROBE_EVENTS=y
 # CONFIG_HAVE_KPROBES is not set
 # CONFIG_KPROBE_EVENTS is not set
 ```
-#### 3. Then add KernelSU config line to ```arch/arm64/configs/(devicename)_defconfig```
+#### 3. Then add KernelSU config line to ```arch/arm64/configs/exynos850-a12snsxx_defconfig```
 ```
 CONFIG_KSU=y
 # CONFIG_KSU_DEBUG is not set # if you a dev, then turn on this option for KernelSU debugging.
