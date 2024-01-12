@@ -8,7 +8,12 @@ git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git
   - [clang-r353983c](https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/emu-29.0-release/clang-r353983c.tar.gz)
   - [aarch64-linux-android](https://github.com/growtopiajaw/aarch64-linux-android-4.9)
   - [aarch64-linux-gnu](https://github.com/radcolor/aarch64-linux-gnu)
-#### 2. Edit Makefile variable
+#### 3. Export these variable
+```sh
+export ANDROID_MAJOR_VERSION=t
+export PLATFORM_VERSION=13
+```
+#### 4. Edit Makefile variable
 ```
 CROSS_COMPILE=/path/to/aarch64-linux-android/bin/aarch64-linux-android-
 CC=/path/to/clang/bin/clang
@@ -18,23 +23,23 @@ CLANG_TRIPLE=/path/to/aarch64-linux-gnu/bin/aarch64-linux-gnu-
   - [CROSS_COMPILE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L323)
   - [CC](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L374)
   - [CLANG_TRIPLE](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased/blob/android-4.19-stable/Makefile#L494)
-#### 3. Edit `arch/arm64/config/exynos850-a12snsxx_defconfig`
+#### 5. Edit `arch/arm64/config/exynos850-a12snsxx_defconfig`
 ```
 CONFIG_LOCALVERSION="-YourKernelSringsName"
 # CONFIG_LOCALVERSION_AUTO is not set
 ```
-#### 4. Get this [build script](https://github.com/rsuntk/kernel-build-script) or type
+#### 6. Get this [build script](https://github.com/rsuntk/kernel-build-script) or type
 ```sh
 make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y exynos850-a12snsxx_defconfig && make -C $(pwd) O=$(pwd)/out KCFLAGS=-w CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 ```
-#### 5. Check directory out/arch/arm64/boot
+#### 7. Check directory out/arch/arm64/boot
 ```sh
 cd $(pwd)/out/arch/arm64/boot && ls
 Image.gz - Kernel is compressed with gzip algorithm
 Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
 ```
-#### 6. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
-#### 7. Done, enjoy.
+#### 8. Put Image.gz/Image to Anykernel3 zip, don't forget to modify the boot partition path in anykernel.sh
+#### 9. Done, enjoy.
 ## B. How to add [KernelSU](https://kernelsu.org) support
 #### 1. First, add KernelSU to your kernel source tree:
 ```sh
