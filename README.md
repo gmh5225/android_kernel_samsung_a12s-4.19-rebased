@@ -45,7 +45,9 @@ Image    - Kernel is uncompressed, but you can put this to AnyKernel3 flasher
 ```sh
 curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
 ```
-#### 2. You can use KPROBES, but Manual method are more stable. Edit ```arch/arm64/configs/exynos850-a12snsxx_defconfig```, and the edit these lines
+#### 2. Disable KPROBE. Edit ```arch/arm64/configs/exynos850-a12snsxx_defconfig```, and the edit these lines
+> KPROBE sometimes broken in a few device, so we need to disable it and use manual integration.
+
 **From this:**
 ```
 CONFIG_KPROBES=y
@@ -58,12 +60,19 @@ CONFIG_KPROBE_EVENTS=y
 # CONFIG_HAVE_KPROBES is not set
 # CONFIG_KPROBE_EVENTS is not set
 ```
-#### 3. Then add KernelSU config line to ```arch/arm64/configs/exynos850-a12snsxx_defconfig```
+#### 3. Then add KernelSU config line
 ```
 CONFIG_KSU=y
 # CONFIG_KSU_DEBUG is not set # if you a dev, then turn on this option for KernelSU debugging.
 ```
 #### 4. Edit these file:
+- **NOTE: KernelSU depends on these symbols:***
+	- ```do_execveat_common```
+	- ```do_faccessat```
+	- ```vfs_read```
+	- ```vfs_statx```
+	- ```input_handle_event```
+
 - **fs/exec.c**
 ```diff
 diff --git a/fs/exec.c b/fs/exec.c
@@ -74,21 +83,25 @@ index ac59664eaecf..bdd585e1d2cc 100644
  	return retval;
  }
 
++#ifdef CONFIG_KSU
 +extern bool ksu_execveat_hook __read_mostly;
 +extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 +			void *envp, int *flags);
 +extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 +				 void *argv, void *envp, int *flags);
- static int do_execveat_common(int fd, struct filename *filename,
++#endif
+static int do_execveat_common(int fd, struct filename *filename,
  			      struct user_arg_ptr argv,
  			      struct user_arg_ptr envp,
  			      int flags)
  {
++#ifdef CONFIG_KSU
 +	if (unlikely(ksu_execveat_hook))
 +		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
 +	else
 +		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
- 	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
++#endif
+	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
  }
 ```
 - **fs/open.c**
@@ -101,14 +114,16 @@ index 05036d819197..965b84d486b8 100644
  	return ksys_fallocate(fd, mode, offset, len);
  }
 
++#ifdef CONFIG_KSU
 +extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 +			 int *flags);
++#endif
  /*
   * access() needs to use the real uid/gid, not the effective uid/gid.
   * We do this by temporarily clearing all FS-related capabilities and
 @@ -355,6 +357,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
   */
- long do_faccessat(int dfd, const char __user *filename, int mode)
+long do_faccessat(int dfd, const char __user *filename, int mode)
  {
  	const struct cred *old_cred;
  	struct cred *override_cred;
@@ -117,9 +132,9 @@ index 05036d819197..965b84d486b8 100644
  	struct vfsmount *mnt;
  	int res;
  	unsigned int lookup_flags = LOOKUP_FOLLOW;
-
++#ifdef CONFIG_KSU
 +	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
-
++#endif
  	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
  		return -EINVAL;
 ```
@@ -133,16 +148,19 @@ index 650fc7e0f3a6..55be193913b6 100644
  }
  EXPORT_SYMBOL(kernel_read);
 
++#ifdef CONFIG_KSU
 +extern bool ksu_vfs_read_hook __read_mostly;
 +extern int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 +			size_t *count_ptr, loff_t **pos);
- ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
++#endif
+ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
  {
  	ssize_t ret;
-
++#ifdef CONFIG_KSU
 +	if (unlikely(ksu_vfs_read_hook))
 +		ksu_handle_vfs_read(&file, &buf, &count, &pos);
 +
++#endif
  	if (!(file->f_mode & FMODE_READ))
  		return -EBADF;
  	if (!(file->f_mode & FMODE_CAN_READ))
@@ -157,16 +175,19 @@ index 376543199b5a..82adcef03ecc 100644
  }
  EXPORT_SYMBOL(vfs_statx_fd);
 
++#ifdef CONFIG_KSU
 +extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
 +
++#endif
  /**
   * vfs_statx - Get basic and extra attributes by filename
   * @dfd: A file descriptor representing the base dir for a relative filename
 @@ -170,6 +172,7 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
  	int error = -EINVAL;
  	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
-
++#ifdef CONFIG_KSU
 +	ksu_handle_stat(&dfd, &filename, &flags);
++#endif
  	if ((flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
  		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
  		return -EINVAL;
@@ -180,23 +201,36 @@ index 45306f9ef247..815091ebfca4 100755
 @@ -367,10 +367,13 @@ static int input_get_disposition(struct input_dev *dev,
  	return disposition;
  }
-
++#ifdef CONFIG_KSU
 +extern bool ksu_input_hook __read_mostly;
 +extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
-+
++#endif
+
  static void input_handle_event(struct input_dev *dev,
  			       unsigned int type, unsigned int code, int value)
  {
 	int disposition = input_get_disposition(dev, type, code, &value);
++#ifdef CONFIG_KSU
 +
 +	if (unlikely(ksu_input_hook))
 +		ksu_handle_input_handle_event(&type, &code, &value);
++#endif
 
  	if (disposition != INPUT_IGNORE_EVENT && type != EV_SYN)
  		add_input_randomness(type, code, value);
 ```
 - **See full KernelSU non-GKI integration documentations** [here](https://kernelsu.org/guide/how-to-integrate-for-non-gki.html)
-## C. Credit
+
+## C. Problem solving
+#### Q: I get an error in drivers/gpu/arm/Kconfig
+A: Export [these variable](https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased#3-export-these-variable)
+
+#### Q: I get an error "drivers/kernelsu/Kconfig"
+A: Make sure symlinked ksu folder are there.
+
+#### Q: I get undefined reference at ksu related lines.
+A: Check out/drivers/kernelsu, if everything not compiled then, check drivers/Makefile, make sure ```obj-$(CONFIG_KSU) += kernelsu/``` are there.
+## D. Credit
 - [Physwizz](https://github.com/physwizz) - OEM and Permissive kernel source
 - [Rissu](https://github.com/rsuntk) - Rebased kernel source
 - [KernelSU](https://kernelsu.org) - A kernel-based root solution for Android
