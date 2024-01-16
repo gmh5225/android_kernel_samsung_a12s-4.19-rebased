@@ -10,8 +10,7 @@ git clone https://github.com/rsuntk/android_kernel_samsung_a12s-4.19-rebased.git
   - [aarch64-linux-gnu](https://github.com/radcolor/aarch64-linux-gnu)
 #### 3. Export these variable
 ```sh
-export ANDROID_MAJOR_VERSION=t
-export PLATFORM_VERSION=13
+export ANDROID_MAJOR_VERSION=t && export PLATFORM_VERSION=13
 ```
 #### 4. Edit Makefile variable
 ```
@@ -48,24 +47,18 @@ curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh
 #### 2. Disable KPROBE. Edit ```arch/arm64/configs/exynos850-a12snsxx_defconfig```, and the edit these lines
 > KPROBE sometimes broken in a few device, so we need to disable it and use manual integration.
 
-**From this:**
+**Follow these patch**
+```diff
+-CONFIG_KPROBES=y
+-CONFIG_HAVE_KPROBES=y
+-CONFIG_KPROBE_EVENTS=y
++# CONFIG_KPROBES is not set
++# CONFIG_HAVE_KPROBES is not set
++# CONFIG_KPROBE_EVENTS is not set
++CONFIG_KSU=y
++# CONFIG_KSU_DEBUG is not set
 ```
-CONFIG_KPROBES=y
-CONFIG_HAVE_KPROBES=y
-CONFIG_KPROBE_EVENTS=y
-```
-**To this:**
-```
-# CONFIG_KPROBES is not set
-# CONFIG_HAVE_KPROBES is not set
-# CONFIG_KPROBE_EVENTS is not set
-```
-#### 3. Then add KernelSU config line
-```
-CONFIG_KSU=y
-# CONFIG_KSU_DEBUG is not set # if you a dev, then turn on this option for KernelSU debugging.
-```
-#### 4. Edit these file:
+#### 3. Edit these file:
 - **NOTE: KernelSU depends on these symbols:***
 	- ```do_execveat_common```
 	- ```do_faccessat```
