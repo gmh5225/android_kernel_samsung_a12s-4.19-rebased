@@ -59,23 +59,16 @@ curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh
 +# CONFIG_KSU_DEBUG is not set
 ```
 #### 3. Edit these file:
-- **NOTE: KernelSU depends on these symbols:***
+- **KernelSU depends on these symbols:**
 	- ```do_execveat_common```
 	- ```do_faccessat```
 	- ```vfs_read```
 	- ```vfs_statx```
 	- ```input_handle_event```
+ ### NOTE: This patch is for 4.19, if you want 4.14, see this [reference](https://github.com/rsuntk/android_kernel_samsung_a03-4.14-oss/blob/upstream/README.md)
 
-- **fs/exec.c**
+- `do_execveat_common` at **fs/exec.c**
 ```diff
-diff --git a/fs/exec.c b/fs/exec.c
-index ac59664eaecf..bdd585e1d2cc 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -1890,11 +1890,14 @@ static int __do_execve_file(int fd, struct filename *filename,
- 	return retval;
- }
-
 +#ifdef CONFIG_KSU
 +extern bool ksu_execveat_hook __read_mostly;
 +extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
@@ -87,7 +80,7 @@ static int do_execveat_common(int fd, struct filename *filename,
  			      struct user_arg_ptr argv,
  			      struct user_arg_ptr envp,
  			      int flags)
- {
+{
 +#ifdef CONFIG_KSU
 +	if (unlikely(ksu_execveat_hook))
 +		ksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);
@@ -95,29 +88,21 @@ static int do_execveat_common(int fd, struct filename *filename,
 +		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
 +#endif
 	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
- }
+}
 ```
-- **fs/open.c**
+- `do_faccessat` at **fs/open.c**
 ```diff
-diff --git a/fs/open.c b/fs/open.c
-index 05036d819197..965b84d486b8 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -348,6 +348,8 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
- 	return ksys_fallocate(fd, mode, offset, len);
- }
-
 +#ifdef CONFIG_KSU
 +extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 +			 int *flags);
 +#endif
- /*
-  * access() needs to use the real uid/gid, not the effective uid/gid.
-  * We do this by temporarily clearing all FS-related capabilities and
-@@ -355,6 +357,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
-  */
+/*
+ * access() needs to use the real uid/gid, not the effective uid/gid.
+ * We do this by temporarily clearing all FS-related capabilities and
+ * switching the fsuid/fsgid around to the real ones.
+ */
 long do_faccessat(int dfd, const char __user *filename, int mode)
- {
+{
  	const struct cred *old_cred;
  	struct cred *override_cred;
  	struct path path;
@@ -131,23 +116,15 @@ long do_faccessat(int dfd, const char __user *filename, int mode)
  	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
  		return -EINVAL;
 ```
-- **fs/read_write.c**
+- `vfs_read` at **fs/read_write.c**
 ```diff
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 650fc7e0f3a6..55be193913b6 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -434,10 +434,14 @@ ssize_t kernel_read(struct file *file, void *buf, size_t count, loff_t *pos)
- }
- EXPORT_SYMBOL(kernel_read);
-
 +#ifdef CONFIG_KSU
 +extern bool ksu_vfs_read_hook __read_mostly;
 +extern int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 +			size_t *count_ptr, loff_t **pos);
 +#endif
 ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
- {
+{
  	ssize_t ret;
 +#ifdef CONFIG_KSU
 +	if (unlikely(ksu_vfs_read_hook))
@@ -158,24 +135,31 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
  		return -EBADF;
  	if (!(file->f_mode & FMODE_CAN_READ))
 ```
-- **fs/stat.c**
+- `vfs_statx` at **fs/stat.c**
 ```diff
-diff --git a/fs/stat.c b/fs/stat.c
-index 376543199b5a..82adcef03ecc 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -148,6 +148,8 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
- }
- EXPORT_SYMBOL(vfs_statx_fd);
-
 +#ifdef CONFIG_KSU
 +extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
 +
 +#endif
- /**
-  * vfs_statx - Get basic and extra attributes by filename
-  * @dfd: A file descriptor representing the base dir for a relative filename
-@@ -170,6 +172,7 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
+/**
+ * vfs_statx - Get basic and extra attributes by filename
+ * @dfd: A file descriptor representing the base dir for a relative filename
+ * @filename: The name of the file of interest
+ * @flags: Flags to control the query
+ * @stat: The result structure to fill in.
+ * @request_mask: STATX_xxx flags indicating what the caller wants
+ *
+ * This function is a wrapper around vfs_getattr().  The main difference is
+ * that it uses a filename and base directory to determine the file location.
+ * Additionally, the use of AT_SYMLINK_NOFOLLOW in flags will prevent a symlink
+ * at the given name from being referenced.
+ *
+ * 0 will be returned on success, and a -ve error code if unsuccessful.
+ */
+int vfs_statx(int dfd, const char __user *filename, int flags,
+	      struct kstat *stat, u32 request_mask)
+{
+	struct path path;
  	int error = -EINVAL;
  	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
 +#ifdef CONFIG_KSU
@@ -185,15 +169,8 @@ index 376543199b5a..82adcef03ecc 100644
  		       AT_EMPTY_PATH | KSTAT_QUERY_FLAGS)) != 0)
  		return -EINVAL;
 ```
-- **drivers/input/input.c**
+- `input_handle_event` at **drivers/input/input.c**
 ```diff
-diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 45306f9ef247..815091ebfca4 100755
---- a/drivers/input/input.c
-+++ b/drivers/input/input.c
-@@ -367,10 +367,13 @@ static int input_get_disposition(struct input_dev *dev,
- 	return disposition;
- }
 +#ifdef CONFIG_KSU
 +extern bool ksu_input_hook __read_mostly;
 +extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
@@ -222,7 +199,7 @@ A: Export [these variable](https://github.com/rsuntk/android_kernel_samsung_a12s
 A: Make sure symlinked ksu folder are there.
 
 #### Q: I get undefined reference at ksu related lines.
-A: Check out/drivers/kernelsu, if everything not compiled then, check drivers/Makefile, make sure ```obj-$(CONFIG_KSU) += kernelsu/``` are there.
+A: Check `out/drivers/kernelsu`, if everything not compiled then, check `drivers/Makefile`, make sure ```obj-$(CONFIG_KSU) += kernelsu/``` are there.
 ## D. Credit
 - [Physwizz](https://github.com/physwizz) - OEM and Permissive kernel source
 - [Rissu](https://github.com/rsuntk) - Rebased kernel source
